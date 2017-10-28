@@ -5,6 +5,8 @@ Menghidupkan Sepeda Motor anda dengan RFID.
 
 ## Getting Started
 
+### Instalasi arduino IDE
+
 ### Kunci RFID Manual
 untuk Kunci kartu RFID dengan menggunakan 1 Relay.
 Relay 1 = digunakan untuk kontak master
