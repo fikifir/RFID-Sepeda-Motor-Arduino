@@ -1,27 +1,14 @@
-#include <EEPROM.h>     // We are going to read and write PICC's UIDs from/to EEPROM
+#include <EEPROM.h>     // Read and write PICC's UIDs from/to EEPROM
 #include <SPI.h>        // RC522 Module uses SPI protocol
 #include <MFRC522.h>    // Library for Mifare RC522 Devices
 
 
-/*
-  For visualizing whats going on hardware
-  we need some leds and
-  to control door lock a relay and a wipe button
-  (or some other hardware)
-  Used common anode led,digitalWriting HIGH turns OFF led
-  Mind that if you are going to use common cathode led or
-  just seperate leds, simply comment out #define COMMON_ANODE,
- */
+#define blueLed 2       // Set Leed Indikator
+#define relay1 8        // Set Pin Relay 1
+#define relay2 7        // Set Pin Relay 2
+#define relay3 6        // Set Pin Relay 2
 
-//define redLed 7    // Set Led Pins
-//define greenLed 6
-//#define blueLed 5
-#define blueLed 8
-
-#define relay1 A1     // Set relay1 Pin
-#define relay2 A2     // Set relay2 Pin
-#define relay3 A3     // Set relay3 Pin
-
+ 
 boolean match = false;          // initialize card match to false
 boolean programMode = false;    // initialize programming mode to false
 
@@ -37,7 +24,7 @@ byte masterCard[4];   // Stores master card's ID read from EEPROM
   MOSI: Pin 11 / ICSP-4
   MISO: Pin 12 / ICSP-1
   SCK : Pin 13 / ICSP-3
-  SS : Pin 10 (Configurable)
+  SS  : Pin 10 (Configurable)
   RST : Pin 9 (Configurable)
   look MFRC522 Library for
   other Arduinos' pin configuration 
@@ -49,23 +36,20 @@ MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance.
 
 ///////////////////////////////////////// Setup ///////////////////////////////////
 void setup() {
-  //Arduino Pin Configuration
-  pinMode(blueLed, OUTPUT);
-  pinMode(relay1, OUTPUT);
-  pinMode(relay2, OUTPUT);
-  pinMode(relay3, OUTPUT);
-  //Be careful how relay1 circuit behave on while resetting or power-cycling your Arduino
-  digitalWrite(relay1, HIGH);    // Make Motor is mati
-  digitalWrite(relay2, HIGH);
-  digitalWrite(relay3, HIGH);
-  digitalWrite(blueLed, LOW); // Make sure led is off
-  //Protocol Configuration
+  pinMode(blueLed, OUTPUT);     // Setup Pin "blueled" sebagai output
+  pinMode(relay1, OUTPUT);      // Setup Pin "relay1" sebagai output
+  pinMode(relay2, OUTPUT);      // Setup Pin "relay2" sebagai output
+  pinMode(relay3, OUTPUT);      // Setup Pin "relay3" sebagai output
+  digitalWrite(relay1, LOW);    // Memastikan Relay dalam Posisi "OFF"
+  digitalWrite(relay2, LOW);    // Memastikan Relay dalam Posisi "OFF"
+  digitalWrite(blueLed, HIGH);  // Memastikan led dalam Keadaan "ON"
+  
   Serial.begin(9600);  // Initialize serial communications with PC
   SPI.begin();           // MFRC522 Hardware uses SPI protocol
   mfrc522.PCD_Init();    // Initialize MFRC522 Hardware
   
   //If you set Antenna Gain to Max it will increase reading distance
-  //mfrc522.PCD_SetAntennaGain(mfrc522.RxGain_max);
+  mfrc522.PCD_SetAntennaGain(mfrc522.RxGain_max);
   
   Serial.println(F("Access Control v3.3"));   // For debugging purposes
   ShowReaderDetails();  // Show details of PCD - MFRC522 Card Reader details
@@ -79,9 +63,11 @@ void setup() {
     Serial.println(F("Scan A PICC to Define as Master Card"));
     do {
       successRead = getID();            // sets successRead to 1 when we get read from reader otherwise 0
-      digitalWrite(blueLed, HIGH);      // Visualize Master Card need to be defined
+      digitalWrite(blueLed, HIGH);    // Visualize Master Card need to be defined
       delay(200);
       digitalWrite(blueLed, LOW);
+      delay(200);
+      digitalWrite(blueLed, HIGH);
       delay(200);
     }
     while (!successRead);                  // Program will not go further while you not get a successful read
@@ -153,7 +139,7 @@ void loop () {
     else {
       if ( findID(readCard) ) { // If not, see if the card is in the EEPROM
         Serial.println(F("Bismillaahi tawakkaltu 'alallaah"));
-        granted();         // Open the door lock for 300 ms
+        granted();         // acsess granted
       }
       else {      // If not, show that the ID was not valid
         Serial.println(F("Kamu Ngapain Coba2 ? Mau Curi Motor Orang"));
@@ -165,19 +151,29 @@ void loop () {
 
 /////////////////////////////////////////  Access Granted    ///////////////////////////////////
 void granted() {
-  digitalWrite(blueLed, HIGH);      // Turn ON blue LED
-  digitalWrite(relay1, LOW);       // relay1 Motor Hidup
+  digitalWrite(blueLed, LOW);
+  digitalWrite(relay1, HIGH);
   delay(100);
-  digitalWrite(relay2, LOW);       // relay1 Motor Hidup
-  delay(2000);
   digitalWrite(relay2, HIGH);
+  delay(2500);
+  digitalWrite(relay3, HIGH);
+  delay(2500);
+  digitalWrite(relay2, LOW);
+  digitalWrite(relay3, LOW);
+  digitalWrite(relay1, HIGH);
   delay(43200000);
 }
 
 ///////////////////////////////////////// Access Denied  ///////////////////////////////////
 void denied() {
-  digitalWrite(blueLed, LOW);   // Make sure blue LED is off
-  delay(1000);
+  digitalWrite(blueLed, HIGH);   // Make sure blue LED is off
+  delay(10);
+  digitalWrite(blueLed, LOW);
+  delay(10);
+  digitalWrite(blueLed, HIGH);   // Make sure blue LED is off
+  delay(10);
+  digitalWrite(blueLed, LOW);
+  delay(10);
 }
 
 
@@ -225,18 +221,20 @@ void ShowReaderDetails() {
 ///////////////////////////////////////// Cycle Leds (Program Mode) ///////////////////////////////////
 void cycleLeds() {
   digitalWrite(blueLed, LOW);   // Make sure blue LED is off
-  delay(200);
+  delay(500);
   digitalWrite(blueLed, HIGH);  // Make sure blue LED is on
-  delay(200);
+  delay(500);
   digitalWrite(blueLed, LOW);   // Make sure blue LED is off
-  delay(200);
+  delay(500);
+  digitalWrite(blueLed, HIGH);  // Make sure blue LED is on
+  delay(500);
 }
 
 //////////////////////////////////////// Normal Mode Led  ///////////////////////////////////
 void normalModeOn() {
-  digitalWrite(blueLed, LOW);  // Blue LED off dan siap membaca kartu
-  digitalWrite(relay1, HIGH);    // Pastikan relay1 mati
-  digitalWrite(relay2, HIGH);    // Pastikan relay2 mati
+  digitalWrite(blueLed, HIGH);  // Blue LED off dan siap membaca kartu
+  digitalWrite(relay1, LOW);    // Pastikan relay1 mati
+  digitalWrite(relay2, LOW);    // Pastikan relay2 mati 
 }
 
 //////////////////////////////////////// Read an ID from EEPROM //////////////////////////////
@@ -343,17 +341,17 @@ boolean findID( byte find[] ) {
 // Flashes the blue LED 3 times to indicate a successful write to EEPROM
 void successWrite() {
   digitalWrite(blueLed, LOW);  // Make sure blue LED is off
-  delay(200);
+  delay(50);
   digitalWrite(blueLed, HIGH);   // Make sure green LED is on
-  delay(200);
+  delay(50);
   digitalWrite(blueLed, LOW);  // Make sure green LED is off
-  delay(200);
+  delay(50);
   digitalWrite(blueLed, HIGH);   // Make sure green LED is on
-  delay(200);
+  delay(50);
   digitalWrite(blueLed, LOW);  // Make sure green LED is off
-  delay(200);
+  delay(50);
   digitalWrite(blueLed, HIGH);   // Make sure green LED is on
-  delay(200);
+  delay(50);
 }
 
 ///////////////////////////////////////// Write Failed to EEPROM   ///////////////////////////////////
@@ -394,5 +392,4 @@ boolean isMaster( byte test[] ) {
   else
     return false;
 }
-
 
