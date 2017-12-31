@@ -1,7 +1,7 @@
 # RFID_Sepeda_Motor
 
 Ini adalah Source code Akses kunci sepeda motor tanpa kunci manual/dengan menggunakan kartu RFID.
-Menghidupkan Sepeda Motor anda dengan RFID.
+Menghidupkan Sepeda Motor anda dengan RFID. video bisa dilihat di (https://youtu.be/wx30pKiNoxE)
 
 ## Alat-alat & Bahan yang Dibutuhkan
 
@@ -15,27 +15,27 @@ Menghidupkan Sepeda Motor anda dengan RFID.
 
 1. Koneksi antara RFID ke arduino UNO,
 
-  (RC522)     (UNO)
-  MOSI ------- Pin 11
-  MISO ------- Pin 12
-  SCK -------- Pin 13
-  SDA/SS ----- Pin 10
-  RST -------- Pin 9
-  3.3V ------- 3.3V
-  GND -------- GND
+(RC522)     (UNO)
+MOSI ------- Pin 11
+MISO ------- Pin 12
+SCK -------- Pin 13
+SDA/SS ----- Pin 10
+RST -------- Pin 9
+3.3V ------- 3.3V
+GND -------- GND
   
 2. Koneksi Relay dengan Arduino UNO
 
-  (Relay)     (UNO)
-  in1 -------- 8
-  in2 -------- 7
-  in3 -------- 6
-  VCC -------- 5V
-  GND -------- GND
+(Relay)     (UNO)
+in1 -------- 8
+in2 -------- 7
+in3 -------- 6
+VCC -------- 5V
+GND -------- GND
   
 3. Koneksi Power Supply 6~12 volt
 
-Dianjurkan menggunakan power regulator untuk menurunkan tegangan dari aki motor 12v ke 6~9volt. bisa membuat sediri menggunakan chip IC LM7805 tutoorial bisa di lihat di ()
+Dianjurkan menggunakan power regulator untuk menurunkan tegangan dari aki motor 12v ke 6~9volt. bisa membuat sediri menggunakan chip IC LM7805 tutoorial bisa di lihat di (https://youtu.be/nkLXVcNdjxg)
 
 Accu (+) ---> ke Saklar master ---> Arduino Input(+)
 Accu (-) ---> Arduino (+)
