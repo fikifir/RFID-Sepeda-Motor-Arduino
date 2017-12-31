@@ -18,9 +18,9 @@
 //#define blueLed 5
 #define blueLed 8
 
-#define relay1 A1     // Set relay1 Pin
-#define relay2 A2     // Set relay2 Pin
-#define relay3 A3     // Set relay3 Pin
+#define relay1 4     // Set relay1 Pin
+#define relay2 3     // Set relay2 Pin
+#define relay3 2     // Set relay3 Pin
 
 boolean match = false;          // initialize card match to false
 boolean programMode = false;    // initialize programming mode to false
