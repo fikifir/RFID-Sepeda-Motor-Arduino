@@ -1,391 +1,388 @@
-#include <EEPROM.h>     // Read and write PICC's UIDs from/to EEPROM
-#include <SPI.h>        // RC522 Module uses SPI protocol
-#include <MFRC522.h>    // Library for Mifare RC522 Devices
+#include <EEPROM.h>                         // Baca dan Tulis PICC's UIDs dari/ke EEPROM
+#include <SPI.h>                            // Modul RC522 menggunakan SPI protocol
+#include <MFRC522.h>                        // Library untuk Mifare RC522
 
 
-#define blueLed 2       // Set Leed Indikator
-#define relay1 8        // Set Pin Relay 1
-#define relay2 7        // Set Pin Relay 2
-#define relay3 6        // Set Pin Relay 2
+#define blueLed 2                           // Set LED Indikator Di Pin2 Arduino
+#define relay1 8                            // Set Relay 1 di Pin8 Arduino
+#define relay2 7                            // Set Relay 2 di Pin7 Arduino
+#define relay3 6                            // Set Relay 3 di Pin6 Arduino
 
  
-boolean match = false;          // initialize card match to false
-boolean programMode = false;    // initialize programming mode to false
+boolean match = false;                      // menginisialisasi kartu yang cocok dengan yang salah
+boolean programMode = false;                // menginisialisasi mode pemrograman ke 'false'
 
-int successRead;    // Variable integer to keep if we have Successful Read from Reader
+int successRead;                            // Variabel integer untuk disimpan jika kita memiliki SuccessRead dari Reader
 
-byte storedCard[4];   // Stores an ID read from EEPROM
-byte readCard[4];     // Stores scanned ID read from RFID Module
-byte masterCard[4];   // Stores master card's ID read from EEPROM
+byte storedCard[4];                         // Menyimpan ID yang ter-scan dari EEPROM
+byte readCard[4];                           // Menyimpan ID yang ter-scan dari Modul RFID
+byte masterCard[4];                         // Menyimpan ID master card dari EEPROM
 
-/*
-  We need to define MFRC522's pins and create instance
-  Pin layout should be as follows (on Arduino Uno):
-  MOSI: Pin 11 / ICSP-4
-  MISO: Pin 12 / ICSP-1
-  SCK : Pin 13 / ICSP-3
-  SS  : Pin 10 (Configurable)
-  RST : Pin 9 (Configurable)
-  look MFRC522 Library for
-  other Arduinos' pin configuration 
- */
+                                            /*
+                                            Koneksi antara RFIDRC522 ke pin Arduino Uno/Arduino Nano:
+                                            MOSI: Pin 11 / ICSP-4
+                                            MISO: Pin 12 / ICSP-1
+                                            SCK : Pin 13 / ICSP-3
+                                            SS  : Pin 10 (bisa di-konfigurasi ulang)
+                                            RST : Pin 9 (bisa di-konfigurasi ulang)
+                                            lihat MFRC522 Library untuk menggunakan pin Arduino yg berbeda
+                                            */
 
 #define SS_PIN 10
 #define RST_PIN 9
-MFRC522 mfrc522(SS_PIN, RST_PIN); // Create MFRC522 instance.
+MFRC522 mfrc522(SS_PIN, RST_PIN);           // Membuat Contoh MFCR522
 
 ///////////////////////////////////////// Setup ///////////////////////////////////
 void setup() {
-  pinMode(blueLed, OUTPUT);     // Setup Pin "blueled" sebagai output
-  pinMode(relay1, OUTPUT);      // Setup Pin "relay1" sebagai output
-  pinMode(relay2, OUTPUT);      // Setup Pin "relay2" sebagai output
-  pinMode(relay3, OUTPUT);      // Setup Pin "relay3" sebagai output
-  digitalWrite(relay1, LOW);    // Memastikan Relay dalam Posisi "OFF"
-  digitalWrite(relay2, LOW);    // Memastikan Relay dalam Posisi "OFF"
-  digitalWrite(blueLed, HIGH);  // Memastikan led dalam Keadaan "ON"
+  pinMode(blueLed, OUTPUT);                 // Setup Pin "blueled" sebagai output
+  pinMode(relay1, OUTPUT);                  // Setup Pin "relay1" sebagai output
+  pinMode(relay2, OUTPUT);                  // Setup Pin "relay2" sebagai output
+  pinMode(relay3, OUTPUT);                  // Setup Pin "relay3" sebagai output
+  digitalWrite(relay1, LOW);                // Memastikan Relay dalam Posisi "OFF"
+  digitalWrite(relay2, LOW);                // Memastikan Relay dalam Posisi "OFF"
+  digitalWrite(relay3, LOW);                // Memastikan Relay dalam Posisi "OFF"
+  digitalWrite(blueLed, HIGH);              // Memastikan led dalam Keadaan "ON"
   
-  Serial.begin(9600);  // Initialize serial communications with PC
-  SPI.begin();           // MFRC522 Hardware uses SPI protocol
-  mfrc522.PCD_Init();    // Initialize MFRC522 Hardware
+  Serial.begin(9600);                       // Komunikasi dengan PC menggunakan Serial Protocol
+  SPI.begin();                              // MFRC522 Hardware uses SPI protocol
+  mfrc522.PCD_Init();                       // Inisialisasi Hardware RFID MFRC522
   
-  //If you set Antenna Gain to Max it will increase reading distance
-  mfrc522.PCD_SetAntennaGain(mfrc522.RxGain_max);
+  mfrc522.PCD_SetAntennaGain(mfrc522.RxGain_max); // Untuk memaksimalkan jarak RFID hingga 1cm.
   
-  Serial.println(F("Access Control v3.3"));   // For debugging purposes
-  ShowReaderDetails();  // Show details of PCD - MFRC522 Card Reader details
+  Serial.println(F("Access Control v3.3")); // Untuk proses mode "Debug"
+  ShowReaderDetails();                      // Menunjukkan detail dari PCD - Detail Card reader MFRC522.
 
-  // Check if master card defined, if not let user choose a master card
-  // This also useful to just redefine Master Card
-  // You can keep other EEPROM records just write other than 143 to EEPROM address 1
-  // EEPROM address 1 should hold magical number which is '143'
+                                            // Menge-cek jika master card sudah ditentukan (terekam dalam EEPROM).
+                                            // jika masih belum ada master card yang terdaftar, user bisa menentukan master card.
+                                            // Ini juga sangat berguna untuk menentukan Master card
+                                            // Kamu dapat menyimpan rekaman EPPROM yang lain dengan syarat harus selain dari '143' ke EEPROM address 1
+                                            // EEPROM address 1 harus menyimpan angka ajaib-nya yaitu '143'
   if (EEPROM.read(1) != 143) {      
     Serial.println(F("No Master Card Defined"));
     Serial.println(F("Scan A PICC to Define as Master Card"));
     do {
-      successRead = getID();            // sets successRead to 1 when we get read from reader otherwise 0
-      digitalWrite(blueLed, HIGH);    // Visualize Master Card need to be defined
+      successRead = getID();                // Set successRead ke posisi '1' saat membaca kartu RFID, jika tidak cocok ke posisi '0'
+      digitalWrite(blueLed, HIGH);          // Indikator LED akan berkedip jika mastercard belum di set/ di daftarkan.
       delay(200);
       digitalWrite(blueLed, LOW);
       delay(200);
       digitalWrite(blueLed, HIGH);
       delay(200);
     }
-    while (!successRead);                  // Program will not go further while you not get a successful read
-    for ( int j = 0; j < 4; j++ ) {        // Loop 4 times
-      EEPROM.write( 2 + j, readCard[j] );  // Write scanned PICC's UID to EEPROM, start from address 3
+    while (!successRead);                   // Program tidak akan melanjutkan ke proses selanjutnya jika tidak dapat membaca kartu
+    for ( int j = 0; j < 4; j++ ) {         // Loop 4 kali
+      EEPROM.write( 2 + j, readCard[j] );   // Menulis/merekam PICC's UID ke EEPROM, dimulai dari address 3
     }
-    EEPROM.write(1, 143);                  // Write to EEPROM we defined Master Card.
-    Serial.println(F("Master Card Defined"));
+    EEPROM.write(1, 143);                   // Menulis/merekam Master card ke adress 1, disini kita menentukan Master Card.
+    Serial.println(F("Master Card telah ditetapkan"));
   }
   Serial.println(F("-------------------"));
-  Serial.println(F("Master Card's UID"));
-  for ( int i = 0; i < 4; i++ ) {          // Read Master Card's UID from EEPROM
-    masterCard[i] = EEPROM.read(2 + i);    // Write it to masterCard
+  Serial.println(F("UID Master Card"));
+  for ( int i = 0; i < 4; i++ ) {           // Membaca Master Card's UID dari EEPROM
+    masterCard[i] = EEPROM.read(2 + i);     // Menulis/merekam ke masterCard
     Serial.print(masterCard[i], HEX);
   }
   Serial.println("");
   Serial.println(F("-------------------"));
-  Serial.println(F("Everything Ready"));
-  Serial.println(F("Waiting PICCs to be scanned"));
-  cycleLeds();    // Everything ready lets give user some feedback by cycling leds
+  Serial.println(F("Perangkat RFID Siap"));
+  Serial.println(F("Menunggu PICCs untuk di scan"));
+  cycleLeds();                              // Semua telah siap, dan jika PICCs di scan, LED akan memberikan sinyal feedback.
 }
 
 
 ///////////////////////////////////////// Main Loop ///////////////////////////////////
 void loop () {
   do {
-    successRead = getID();  // sets successRead to 1 when we get read from reader otherwise 0
+    successRead = getID();                  // Set successRead ke posisi '1' saat membaca kartu RFID, jika tidak cocok ke posisi '0'
     if (programMode) {
-      cycleLeds();              // Program Mode cycles through RGB waiting to read a new card
+      cycleLeds();                          // Indikator LED akan berkedip menunggu kartu baru untuk di scan
     }
     else {
-      normalModeOn();     // Normal mode, blue Power LED is on, all others are off
+      normalModeOn();                       // Normal mode, blue LED OFF,
     }
   }
-  while (!successRead);   //the program will not go further while you not get a successful read
+  while (!successRead);                     //  Program tidak akan melanjutkan ke proses selanjutnya jika tidak dapat membaca kartu
   if (programMode) {
-    if ( isMaster(readCard) ) { //If master card scanned again exit program mode
-      Serial.println(F("Master Card Scanned"));
-      Serial.println(F("Exiting Program Mode"));
+    if ( isMaster(readCard) ) {             // Jika Master card di scan lagi akan keluar dari "Mode Program"
+      Serial.println(F("Master Card telah di Scan"));
+      Serial.println(F("Keluar dari Mode Program"));
       Serial.println(F("-----------------------------"));
       programMode = false;
       return;
     }
     else {
-      if ( findID(readCard) ) { // If scanned card is known delete it
-        Serial.println(F("I know this PICC, removing..."));
+      if ( findID(readCard) ) {             // Jika kartu yang di-scan sudah terdaftar sebelumnya, maka akan dihapus
+        Serial.println(F("Saya Kenal Kartu Ini, Menghapus..."));
         deleteID(readCard);
-        Serial.println("-----------------------------");
+        Serial.println("--------------Berhasil--------------");
       }
-      else {                    // If scanned card is not known add it
-        Serial.println(F("I do not know this PICC, adding..."));
+      else {                                // Jika kartu yang di-scan belum terdaftar, maka akan didaftarkan
+        Serial.println(F("Saya Tidak Mengenal Kartu Ini, Mendaftarkan..."));
         writeID(readCard);
-        Serial.println(F("-----------------------------"));
+        Serial.println(F("--------------Berhasil--------------"));
       }
     }
   }
   else {
-    if ( isMaster(readCard) ) {   // If scanned card's ID matches Master Card's ID enter program mode
+    if ( isMaster(readCard) ) {             // Jika kartu yang di scan adalah Master Card maka akan masuk 'Mode Program'.
       programMode = true;
-      Serial.println(F("Hello Master - Entered Program Mode"));
-      int count = EEPROM.read(0);   // Read the first Byte of EEPROM that
-      Serial.print(F("I have "));     // stores the number of ID's in EEPROM
+      Serial.println(F("Selamat Datang Master - Masuk dalam 'Mode Program'"));
+      int count = EEPROM.read(0);           // Read the first Byte of EEPROM that
+      Serial.print(F("Saya Mempunyai "));   // Mendaftarkan/ menyimpan nomor ID di EEPROM
       Serial.print(count);
-      Serial.print(F(" record(s) on EEPROM"));
+      Serial.print(F(" ID yang tersimpan di EEPROM"));
       Serial.println("");
-      Serial.println(F("Scan a PICC to ADD or REMOVE"));
+      Serial.println(F("Scan PICC untuk 'Menambahkan/Daftarkan' Atau 'Menghapus'"));
       Serial.println(F("-----------------------------"));
     }
     else {
-      if ( findID(readCard) ) { // If not, see if the card is in the EEPROM
-        Serial.println(F("Bismillaahi tawakkaltu 'alallaah"));
-        granted();         // acsess granted
+      if ( findID(readCard) ) {             // If not, see if the card is in the EEPROM
+        Serial.println(F("Akses Diterima"));
+        granted();                          // Akses Diterima
       }
-      else {      // If not, show that the ID was not valid
-        Serial.println(F("Kamu Ngapain Coba2 ? Mau Curi Motor Orang"));
+      else {                                // Jika tidak cocok, maka akan menampilkan teks kalau ID tidak cocok
+        Serial.println(F("Kamu Ngapain Coba-coba tempel kartu RFID? Mau Curi Motor Orang?"));
         denied();
       }
     }
   }
 }
 
-/////////////////////////////////////////  Access Granted    ///////////////////////////////////
+/////////////////////////////////////////  Akses Diterima    ///////////////////////////////////
 void granted() {
-  digitalWrite(blueLed, LOW);
-  digitalWrite(relay1, HIGH);
-  delay(100);
-  digitalWrite(relay2, HIGH);
-  delay(2500);
-  digitalWrite(relay3, HIGH);
-  delay(2500);
-  digitalWrite(relay2, LOW);
-  digitalWrite(relay3, LOW);
-  digitalWrite(relay1, HIGH);
+  digitalWrite(blueLed, LOW);               // LED akan mati
+  digitalWrite(relay1, HIGH);               // Relay1 hidup (kunci kontak nyala)
+  delay(100);                               // tunggu 100ms sejenak
+  digitalWrite(relay2, HIGH);               // Relay2 hidup (Rem belakan nyala) bersamaan dengan Relay3
+  delay(2500);                              // Selama 2.5 detik
+  digitalWrite(relay3, HIGH);               // Relay3 hidup (Stater nyala) bersamaan dengan Relay2
+  delay(2500);                              // Selama 2.5 detik
+  digitalWrite(relay2, LOW);                // Relay2 akan mati
+  digitalWrite(relay3, LOW);                // Relay3 akan mati
+  digitalWrite(relay1, HIGH);               // Relay1 (kontak) tetap hidup selama (43200000ms)
   delay(43200000);
 }
 
-///////////////////////////////////////// Access Denied  ///////////////////////////////////
+///////////////////////////////////////// Akses Ditolak  ///////////////////////////////////
 void denied() {
-  digitalWrite(blueLed, HIGH);   // Make sure blue LED is off
+  digitalWrite(blueLed, HIGH);              // LED akan berkedip setiap 10ms.
   delay(10);
   digitalWrite(blueLed, LOW);
   delay(10);
-  digitalWrite(blueLed, HIGH);   // Make sure blue LED is off
+  digitalWrite(blueLed, HIGH);
   delay(10);
   digitalWrite(blueLed, LOW);
   delay(10);
 }
 
 
-///////////////////////////////////////// Get PICC's UID ///////////////////////////////////
+///////////////////////////////////////// Merekam PICC UID ///////////////////////////////////
 int getID() {
-  // Getting ready for Reading PICCs
-  if ( ! mfrc522.PICC_IsNewCardPresent()) { //If a new PICC placed to RFID reader continue
+                                            // Bersiap untuk membaca PICCs
+  if ( ! mfrc522.PICC_IsNewCardPresent()) { // Jika PICC masih baru, berikan sinyal ke RFID reader untuk memproses ke tahap selanjutnya
     return 0;
   }
-  if ( ! mfrc522.PICC_ReadCardSerial()) {   //Since a PICC placed get Serial and continue
+  if ( ! mfrc522.PICC_ReadCardSerial()) {   // Melanjutkan PICC untuk komunikasi Serial dan melanjutkan ke proses selanjutnya
     return 0;
   }
-  // There are Mifare PICCs which have 4 byte or 7 byte UID care if you use 7 byte PICC
-  // I think we should assume every PICC as they have 4 byte UID
-  // Until we support 7 byte PICCs
+                                            // Mifare PICC dipasaran ada versi 4 dan 7 bit UID. jaga-jaga jika anda menggunakan versi 7bit
+                                            // Kita beransumsi bahwa setiap PICC menggunakan 4bit UID
+                                            // Hingga suatu saat mungkin akan mendukung UID 7bit
   Serial.println(F("Scanned PICC's UID:"));
   for (int i = 0; i < 4; i++) {  //
     readCard[i] = mfrc522.uid.uidByte[i];
     Serial.print(readCard[i], HEX);
   }
   Serial.println("");
-  mfrc522.PICC_HaltA(); // Stop reading
+  mfrc522.PICC_HaltA();                     // Berhenti Membaca
   return 1;
 }
 
 void ShowReaderDetails() {
-  // Get the MFRC522 software version
+                                            // Print Versi Software MFRC522
   byte v = mfrc522.PCD_ReadRegister(mfrc522.VersionReg);
-  Serial.print(F("MFRC522 Software Version: 0x"));
+  Serial.print(F("Versi Software MFRC522: 0x"));
   Serial.print(v, HEX);
   if (v == 0x91)
     Serial.print(F(" = v1.0"));
   else if (v == 0x92)
     Serial.print(F(" = v2.0"));
   else
-    Serial.print(F(" (unknown)"));
+    Serial.print(F(" (Tidak diketahui)"));
   Serial.println("");
-  // When 0x00 or 0xFF is returned, communication probably failed
+                                            // Jika 0x00 atau 0xFF dikembalikan, komunikasi mungkin gagal
   if ((v == 0x00) || (v == 0xFF)) {
-    Serial.println(F("WARNING: Communication failure, is the MFRC522 properly connected?"));
-    while(true);  // do not go further
+    Serial.println(F("PERINGATAN: Komunikasi Gagal, apakah MFRC522 terhubung dengan benar?"));
+    while(true);                            // Jangan melanjutkan leih jauh
   }
 }
 
 ///////////////////////////////////////// Cycle Leds (Program Mode) ///////////////////////////////////
 void cycleLeds() {
-  digitalWrite(blueLed, LOW);   // Make sure blue LED is off
+  digitalWrite(blueLed, LOW);               // LED akan 'ON' dan 'OFF' setiap 500ms
   delay(500);
-  digitalWrite(blueLed, HIGH);  // Make sure blue LED is on
+  digitalWrite(blueLed, HIGH);
   delay(500);
-  digitalWrite(blueLed, LOW);   // Make sure blue LED is off
+  digitalWrite(blueLed, LOW);
   delay(500);
-  digitalWrite(blueLed, HIGH);  // Make sure blue LED is on
+  digitalWrite(blueLed, HIGH);
   delay(500);
 }
 
 //////////////////////////////////////// Normal Mode Led  ///////////////////////////////////
 void normalModeOn() {
-  digitalWrite(blueLed, HIGH);  // Blue LED off dan siap membaca kartu
-  digitalWrite(relay1, LOW);    // Pastikan relay1 mati
-  digitalWrite(relay2, LOW);    // Pastikan relay2 mati 
+  digitalWrite(blueLed, HIGH);              // LED 'ON' dan siap membaca kartu
+  digitalWrite(relay1, LOW);                // Pastikan relay1 mati
+  digitalWrite(relay2, LOW);                // Pastikan relay2 mati 
+  digitalWrite(relay3, LOW);                // Pastikan relay3 mati
 }
 
-//////////////////////////////////////// Read an ID from EEPROM //////////////////////////////
+//////////////////////////////////////// Membaca ID dari EEPROM //////////////////////////////
 void readID( int number ) {
-  int start = (number * 4 ) + 2;    // Figure out starting position
-  for ( int i = 0; i < 4; i++ ) {     // Loop 4 times to get the 4 Bytes
-    storedCard[i] = EEPROM.read(start + i);   // Assign values read from EEPROM to array
+  int start = (number * 4 ) + 2;            // Figure out starting position
+  for ( int i = 0; i < 4; i++ ) {           // Loop 4 times to get the 4 Bytes
+    storedCard[i] = EEPROM.read(start + i); // Assign values read from EEPROM to array
   }
 }
 
-///////////////////////////////////////// Add ID to EEPROM   ///////////////////////////////////
+///////////////////////////////////////// Menambahkan ID ke EEPROM   ///////////////////////////////////
 void writeID( byte a[] ) {
-  if ( !findID( a ) ) {     // Before we write to the EEPROM, check to see if we have seen this card before!
-    int num = EEPROM.read(0);     // Get the numer of used spaces, position 0 stores the number of ID cards
-    int start = ( num * 4 ) + 6;  // Figure out where the next slot starts
-    num++;                // Increment the counter by one
-    EEPROM.write( 0, num );     // Write the new count to the counter
-    for ( int j = 0; j < 4; j++ ) {   // Loop 4 times
-      EEPROM.write( start + j, a[j] );  // Write the array values to EEPROM in the right position
+  if ( !findID( a ) ) {                     // Before we write to the EEPROM, check to see if we have seen this card before!
+    int num = EEPROM.read(0);               // Get the numer of used spaces, position 0 stores the number of ID cards
+    int start = ( num * 4 ) + 6;            // Figure out where the next slot starts
+    num++;                                  // Increment the counter by one
+    EEPROM.write( 0, num );                 // Write the new count to the counter
+    for ( int j = 0; j < 4; j++ ) {         // Loop 4 times
+      EEPROM.write( start + j, a[j] );      // Write the array values to EEPROM in the right position
     }
     successWrite();
-  Serial.println(F("Succesfully added ID record to EEPROM"));
+  Serial.println(F("Berhasil menambahkan ID ke EEPROM"));
   }
   else {
     failedWrite();
-  Serial.println(F("Failed! There is something wrong with ID or bad EEPROM"));
+  Serial.println(F("Gagal! Ada yang salah dengan ID atau EEPROM anda"));
   }
 }
 
-///////////////////////////////////////// Remove ID from EEPROM   ///////////////////////////////////
+///////////////////////////////////////// Menghapus ID dari EEPROM   ///////////////////////////////////
 void deleteID( byte a[] ) {
-  if ( !findID( a ) ) {     // Before we delete from the EEPROM, check to see if we have this card!
-    failedWrite();      // If not
-  Serial.println(F("Failed! There is something wrong with ID or bad EEPROM"));
+  if ( !findID( a ) ) {                      // Sebelum kita hapus dari EEPROM, periksa untuk melihat apakah kita mempunyai kartu ini
+    failedWrite();                           // jika tidak
+  Serial.println(F("Gagal! Ada yang salah dengan ID atau EEPROM anda"));
   }
   else {
-    int num = EEPROM.read(0);   // Get the numer of used spaces, position 0 stores the number of ID cards
-    int slot;       // Figure out the slot number of the card
-    int start;      // = ( num * 4 ) + 6; // Figure out where the next slot starts
-    int looping;    // The number of times the loop repeats
+    int num = EEPROM.read(0);                // Dapatkan jumlah spasi yang digunakan, posisi 0 menyimpan jumlah ID
+    int slot;                                // Cari tahu nomor slot kartu
+    int start;                               // = ( num * 4 ) + 6; // Cari tahu di mana slot berikutnya dimulai
+    int looping;                             // Jumlah/Frekuensi loop yang berulang
     int j;
-    int count = EEPROM.read(0); // Read the first Byte of EEPROM that stores number of cards
-    slot = findIDSLOT( a );   // Figure out the slot number of the card to delete
+    int count = EEPROM.read(0);              // Baca EEPROM bit pertama yang menyimpan ID kartu
+    slot = findIDSLOT( a );                  // Cari tahu nomor slot kartu yang akan dihapus
     start = (slot * 4) + 2;
     looping = ((num - slot) * 4);
-    num--;      // Decrement the counter by one
-    EEPROM.write( 0, num );   // Write the new count to the counter
-    for ( j = 0; j < looping; j++ ) {         // Loop the card shift times
-      EEPROM.write( start + j, EEPROM.read(start + 4 + j));   // Shift the array values to 4 places earlier in the EEPROM
+    num--;                                   // Turunkan counter dengan satu
+    EEPROM.write( 0, num );                  // Tulis penghitung baru ke Counter
+    for ( j = 0; j < looping; j++ ) {        // Loop waktu shift kartu
+      EEPROM.write( start + j, EEPROM.read(start + 4 + j));   // Pergeseran nilai array ke 4 tempat sebelumnya di EEPROM
     }
-    for ( int k = 0; k < 4; k++ ) {         // Shifting loop
+    for ( int k = 0; k < 4; k++ ) {          // Pergeseran loop
       EEPROM.write( start + j + k, 0);
     }
     successDelete();
-  Serial.println(F("Succesfully removed ID record from EEPROM"));
+  Serial.println(F("Berhasil menghapus ID dari EEPROM"));
   }
 }
 
-///////////////////////////////////////// Check Bytes   ///////////////////////////////////
+///////////////////////////////////////// Cek Bit   ///////////////////////////////////
 boolean checkTwo ( byte a[], byte b[] ) {
-  if ( a[0] != NULL )       // Make sure there is something in the array first
-    match = true;       // Assume they match at first
-  for ( int k = 0; k < 4; k++ ) {   // Loop 4 times
-    if ( a[k] != b[k] )     // IF a != b then set match = false, one fails, all fail
+  if ( a[0] != NULL )                       // Pertama, Pastikan ada sesuatu di dalam array
+    match = true;                           // Asumsikan semua cocok pada awalnya
+  for ( int k = 0; k < 4; k++ ) {           // Loop 4 kali
+    if ( a[k] != b[k] )                     // Jika a != b lalu atur kecocokan = false, satu fails, semua fail
       match = false;
   }
-  if ( match ) {      // Check to see if if match is still true
-    return true;      // Return true
+  if ( match ) {                            // Periksa untuk melihat apakah jika kecocokan masih benar
+    return true;                            // Kembali true
   }
   else  {
-    return false;       // Return false
+    return false;                           // Kembali false
   }
 }
 
-///////////////////////////////////////// Find Slot   ///////////////////////////////////
+///////////////////////////////////////// Menemukan Slot   ///////////////////////////////////
 int findIDSLOT( byte find[] ) {
-  int count = EEPROM.read(0);       // Read the first Byte of EEPROM that
-  for ( int i = 1; i <= count; i++ ) {    // Loop once for each EEPROM entry
-    readID(i);                // Read an ID from EEPROM, it is stored in storedCard[4]
-    if ( checkTwo( find, storedCard ) ) {   // Check to see if the storedCard read from EEPROM
-      // is the same as the find[] ID card passed
-      return i;         // The slot number of the card
-      break;          // Stop looking we found it
+  int count = EEPROM.read(0);               // Baca Bit pertama EEPROM yang
+  for ( int i = 1; i <= count; i++ ) {      // Loop sekali untuk setiap entri EEPROM
+    readID(i);                              // Baca ID dari EEPROM, disimpan di dalam storeCard [4]
+    if ( checkTwo( find, storedCard ) ) {   // Periksa untuk melihat apakah penyimpanan tersimpan dibaca dari EEPROM
+                                            // sama-sama dengan yang ditemukan [] ID Card lulus
+      return i;                             // Nomor slot kartu
+      break;                                // Berhenti Mencari, kita menemukannya
     }
   }
 }
 
-///////////////////////////////////////// Find ID From EEPROM   ///////////////////////////////////
+///////////////////////////////////////// Mencari ID dari EEPROM   ///////////////////////////////////
 boolean findID( byte find[] ) {
-  int count = EEPROM.read(0);     // Read the first Byte of EEPROM that
-  for ( int i = 1; i <= count; i++ ) {    // Loop once for each EEPROM entry
-    readID(i);          // Read an ID from EEPROM, it is stored in storedCard[4]
+  int count = EEPROM.read(0);               // Membaca bit pertama EEPROM
+  for ( int i = 1; i <= count; i++ ) {      // Loop once for each EEPROM entry
+    readID(i);                              // Read an ID from EEPROM, it is stored in storedCard[4]
     if ( checkTwo( find, storedCard ) ) {   // Check to see if the storedCard read from EEPROM
       return true;
-      break;  // Stop looking we found it
+      break;                                // Berhenti mencari, kita sudah menemukannya
     }
-    else {    // If not, return false
+    else {                                  // Jika tidak, kembali ke 'false'
     }
   }
   return false;
 }
 
-///////////////////////////////////////// Write Success to EEPROM   ///////////////////////////////////
-// Flashes the blue LED 3 times to indicate a successful write to EEPROM
+///////////////////////////////////////// Sukses menulis ke EEPROM   ///////////////////////////////////
 void successWrite() {
-  digitalWrite(blueLed, LOW);  // Make sure blue LED is off
+  digitalWrite(blueLed, LOW);               // LED akan berkedip setiap 50ms
   delay(50);
-  digitalWrite(blueLed, HIGH);   // Make sure green LED is on
+  digitalWrite(blueLed, HIGH);
   delay(50);
-  digitalWrite(blueLed, LOW);  // Make sure green LED is off
+  digitalWrite(blueLed, LOW);
   delay(50);
-  digitalWrite(blueLed, HIGH);   // Make sure green LED is on
+  digitalWrite(blueLed, HIGH);
   delay(50);
-  digitalWrite(blueLed, LOW);  // Make sure green LED is off
+  digitalWrite(blueLed, LOW);
   delay(50);
-  digitalWrite(blueLed, HIGH);   // Make sure green LED is on
+  digitalWrite(blueLed, HIGH);
   delay(50);
 }
 
-///////////////////////////////////////// Write Failed to EEPROM   ///////////////////////////////////
-// Flashes the blue LED 2 times to indicate a failed write to EEPROM
+///////////////////////////////////////// Gagal Menulis ke EEPROM   ///////////////////////////////////
 void failedWrite() {
-  digitalWrite(blueLed, LOW);   // Make sure blue LED is off
+  digitalWrite(blueLed, LOW);               // LED akan Berkedip setiap 1 detik
   delay(1000);
-  digitalWrite(blueLed, HIGH);   // Make sure red LED is on
+  digitalWrite(blueLed, HIGH);
   delay(1000);
-  digitalWrite(blueLed, LOW);  // Make sure red LED is off
+  digitalWrite(blueLed, LOW);
   delay(1000);
-  digitalWrite(blueLed, HIGH);   // Make sure red LED is on
+  digitalWrite(blueLed, HIGH);
   delay(1000);
 }
 
-///////////////////////////////////////// Success Remove UID From EEPROM  ///////////////////////////////////
-// Flashes the blue LED 3 times to indicate a success delete to EEPROM
+///////////////////////////////////////// Sukses Menghapus UID dari EEPROM  ///////////////////////////////////
 void successDelete() {
-  digitalWrite(blueLed, LOW);   // Make sure blue LED is off
+  digitalWrite(blueLed, LOW);               // LED Berkedip setiap 200ms
   delay(200);
-  digitalWrite(blueLed, HIGH);  // Make sure blue LED is on
+  digitalWrite(blueLed, HIGH);
   delay(200);
-  digitalWrite(blueLed, LOW);   // Make sure blue LED is off
+  digitalWrite(blueLed, LOW);
   delay(200);
-  digitalWrite(blueLed, HIGH);  // Make sure blue LED is on
+  digitalWrite(blueLed, HIGH);
   delay(200);
-  digitalWrite(blueLed, LOW);   // Make sure blue LED is off
+  digitalWrite(blueLed, LOW);
   delay(200);
-  digitalWrite(blueLed, HIGH);  // Make sure blue LED is on
+  digitalWrite(blueLed, HIGH);
   delay(200);
 }
 
-////////////////////// Check readCard IF is masterCard   ///////////////////////////////////
-// Check to see if the ID passed is the master programing card
+////////////////////// Cek readCard JIKA masterCard   ///////////////////////////////////
+                                           // Memeriksa jika ID memang Master Card
 boolean isMaster( byte test[] ) {
   if ( checkTwo( test, masterCard ) )
     return true;
