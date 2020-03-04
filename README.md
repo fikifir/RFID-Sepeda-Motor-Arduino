@@ -3,7 +3,7 @@
 > Ini adalah Source code Akses kunci sepeda motor tanpa kunci manual/ dengan menggunakan kartu RFID. Menghidupkan Sepeda Motor anda dengan RFID card.
 
 ## Index
-1. [Parts](#alat)
+1. [Alat dan Bahan](#alat)
 2. [Diagram](#diagram)
 	- [Schematic Diagram](#schematic)
 	- [Wiring Diagram](#wiring)
