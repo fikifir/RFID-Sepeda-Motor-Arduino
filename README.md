@@ -1,14 +1,21 @@
-# **RFID Sepeda Motor**
+# RFID Sepeda Motor
 
+
+![issues](https://img.shields.io/github/issues/fikifir/RFID-Sepeda-Motor-Arduino)
+![forks](https://img.shields.io/github/forks/fikifir/RFID-Sepeda-Motor-Arduino)
+![stars](https://img.shields.io/github/stars/fikifir/RFID-Sepeda-Motor-Arduino)
+![Licences](https://img.shields.io/github/license/fikifir/RFID-Sepeda-Motor-Arduino)
+
+<br>
 > Ini adalah Source code Akses kunci sepeda motor tanpa kunci manual/ dengan menggunakan kartu RFID. Menghidupkan Sepeda Motor anda dengan RFID card.
 
-Project ini di buat untuk mempermudah pemilik sepeda motor untuk menghidupkan dan mematikan sepeda motor dengan mudah. Serta memberi perlindungan anti-maling.
+Project ini di buat untuk mempermudah pemilik sepeda motor untuk menghidupkan dan mematikan mesin sepeda motor dengan mudah. Serta memberi perlindungan anti-maling.
 
 Video dibawah ini adalah contoh dan aplikasi sistem RFID Arduino.
 
 [![Watch the video](https://img.youtube.com/vi/wx30pKiNoxE/maxresdefault.jpg)](https://youtu.be/wx30pKiNoxE)
 
-Jika anda mengalami kesulitan dan memerlukan bantuan silahkan hubungi saya di alamar email ini, saya akan berusaha menjawab semua pertanyaan.
+Jika anda mengalami kesulitan dan memerlukan bantuan silahkan hubungi saya di alamat email _`fikifirmansyah@gmail.com`_, saya akan berusaha menjawab semua pertanyaan.
 
 ---
 
@@ -89,26 +96,3 @@ Kode "library" asli ditulis oleh miguel
 
 ## <a name="referensi">6. Reference</a>
 Full credit untuk Michael baobla
-
-
-I know i don't usually do this
-or ask for help. Anyway
-i feel like i need to
-music, tv, skateboarding 
-and surfing
-usually bring me happiness
-Instead,
-I'm feeling empty and fear
-for what tomorrow will
-bring and shit
-plus, I'm not
-f*cking sleeping 
-as good as i usually do
-why do i feel this way?
-why do i feel worthlessness
-and helplessness
-will never go away
-is there a way out?
-or do i need to see
-a f*ckin doctor
-let me know, your boy. Fiki
