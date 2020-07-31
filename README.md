@@ -90,9 +90,9 @@ Relay 2 = digunakan untuk tombol starter selama 1.5 detik
 ---
 
 ## <a name="kesimpulan">5. Kesimpulan</a>
-Kode "library" asli ditulis oleh miguel
+Kode "library" asli ditulis oleh
 
 ---
 
 ## <a name="referensi">6. Reference</a>
-Full credit untuk Michael baobla
+Full credit untuk 
